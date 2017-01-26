@@ -2138,15 +2138,30 @@ static ssize_t safe_pwrite64(Task* t, const void* buf, ssize_t buf_size,
                              remote_ptr<void> addr) {
   vector<KernelMapping> mappings_to_fix;
   for (auto m : t->vm()->maps_containing_or_after(floor_page_size(addr))) {
+    bool found = m.map.start() == 0x7f856a1b9000;
+    if (found) {
+      printf("bholleydbg: Called safe_pwrite64 with mapping 0x7f856a1b9000\n");
+    }
     if (m.map.start() >= ceil_page_size(addr + buf_size)) {
+      if (found) {
+        printf("bholleydbg: Bailed out in first check\n");
+      }
       break;
     }
     if (m.map.prot() & PROT_WRITE) {
+      if (found) {
+        printf("bholleydbg: Bailed out in second check\n");
+      }
       continue;
     }
     if (!(m.map.prot() & PROT_READ) || (m.map.flags() & MAP_SHARED) ||
         m.map.size() >= 2 * 1024 * 1024 /* Could be backed by thp */) {
+      if (found) {
+        printf("bholleydbg: Adding to mappings_to_fix\n");
+      }
       mappings_to_fix.push_back(m.map);
+    } else if (found) {
+      printf("bholleydbg: Not adding to mappings_to_fix\n");
     }
   };
 
